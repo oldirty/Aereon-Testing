@@ -308,5 +308,5 @@ client.run(os.environ['envtoken'])
 #
 #
 #
-#
+#this is fucking stupid
 #
