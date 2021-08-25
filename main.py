@@ -16,11 +16,6 @@ from discord.ext import commands
 intents = discord.Intents.default()
 intents.members = True
 #-----------------------------------------------------------------------------
-#-------------------------Print DB / REMOVE USER FROM DB----------------------
-#-----------------------------------------------------------------------------
-#print(db.keys())
-#del db["209179935074549760"]
-#-----------------------------------------------------------------------------
 #------------------------------COMMAND PREFIX---------------------------------
 #-----------------------------------------------------------------------------
 client = commands.Bot(command_prefix="!", intents=intents)
@@ -79,17 +74,40 @@ async def stats(ctx,user: discord.User=None ):
       em.add_field(name="Balance Owed", value=user["wallet"], inline=False)
       em.add_field(name="Life Time Passengers", value=user["try"], inline=False)
       em.add_field(name="Life Time Ticket Value ", value=user["bank"], inline=False)
-      em.add_field(name="Joined Date", value=user["jdate"], inline=False)
       em.set_footer(text="Aeron Flight Bot v1.0")
     except:
       em = discord.Embed(title=f"{userat}")
       em.add_field(name="debug", value=user)
     await ctx.send(embed=em)
-
 #----------------------------------------------------------------------------
 #----------------------------------Delet log----------------------------
 #----------------------------------------------------------------------------
+@client.command()
+async def leaderboard(ctx,x = 10):
+    users = await get_profile_data()
+    leader_board = {}
+    total = []
+    for user in users:
+        name = int(user)
+        total_amount = user["bank"]
+        leader_board[total_amount] = name
+        total.append(total_amount)
 
+    total = sorted(total,reverse=True)    
+
+    em = discord.Embed(title = f"Top {x} Richest People" , description = "This is decided on the basis of raw money in the bank and wallet",color = discord.Color(0xfa43ee))
+    index = 1
+    for amt in total:
+        id_ = leader_board[amt]
+        member = client.get_user(id_)
+        name = member
+        em.add_field(name = f"{index}. {name}" , value = f"{amt}",  inline = False)
+        if index == x:
+            break
+        else:
+            index += 1
+
+    await ctx.send(embed = em)
 
 
 
@@ -208,7 +226,7 @@ async def r(ctx, user: discord.User=None):
     try:
         user = json.loads(str(db[str(Userid)]))
     except:
-        print("Unexpected value in #add: {}".format(db[str(Userid)]))
+        print("Unexpected value in #r: {}".format(db[str(Userid)]))
     balance = user["wallet"]
     earnings = int()
     arguments = ctx.message.content.split(' ')
