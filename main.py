@@ -5,6 +5,7 @@ import requests
 import json
 import math
 import time
+import datetime
 from discord.ext.commands import MissingPermissions
 from replit import db
 from keep_alive import keep_alive
@@ -18,7 +19,7 @@ intents.members = True
 #-------------------------Print DB / REMOVE USER FROM DB----------------------
 #-----------------------------------------------------------------------------
 #print(db.keys())
-#del db["Key"]
+#del db["209179935074549760"]
 #-----------------------------------------------------------------------------
 #------------------------------COMMAND PREFIX---------------------------------
 #-----------------------------------------------------------------------------
@@ -78,18 +79,26 @@ async def stats(ctx,user: discord.User=None ):
       em.add_field(name="Balance Owed", value=user["wallet"], inline=False)
       em.add_field(name="Life Time Passengers", value=user["try"], inline=False)
       em.add_field(name="Life Time Ticket Value ", value=user["bank"], inline=False)
+      em.add_field(name="Joined Date", value=user["jdate"], inline=False)
       em.set_footer(text="Aeron Flight Bot v1.0")
     except:
       em = discord.Embed(title=f"{userat}")
       em.add_field(name="debug", value=user)
     await ctx.send(embed=em)
+
+#----------------------------------------------------------------------------
+#----------------------------------Delet log----------------------------
+#----------------------------------------------------------------------------
+
+
+
+
 #----------------------------------------------------------------------------
 #----------------------------------FLIGHT COMMAND----------------------------
 #----------------------------------------------------------------------------
 @client.command()
 async def flight(ctx):
-    await open_profile(ctx.author)
-      
+    await open_profile(ctx.author) 
     try:
         user = json.loads(str(db[str(ctx.author.id)]))
     except:
@@ -179,6 +188,8 @@ async def flight(ctx):
     ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)## - DONT NEED
     await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
     
+    #user['jdate'] = "08/25/21" #Set eveyones join date for Main branch #Use 
+    
     user["bank"] = tearn + tbal
     user["try"] = Passanger + psngr
     user["wallet"] = balance + earnings
@@ -187,8 +198,8 @@ async def flight(ctx):
 #-----------------------------------REMOVE COMMAND---------------------------
 #----------------------------------------------------------------------------
 @client.command()
-@commands.has_role("Management")
-async def remove(ctx, user: discord.User=None):   
+#@commands.has_role("Management")
+async def r(ctx, user: discord.User=None):   
 
     Userid = user.id # same as previous
     UserAt = user.name
@@ -222,10 +233,23 @@ async def remove(ctx, user: discord.User=None):
       fm.set_footer(text="Aeron Flight Bot v1.0")
       ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
       await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
-    
+
+    if earnings > 0: #PUSH TO LOG CHANNEL
+      channel = client.get_channel(880002977753071626)
+
+      earning = earnings * -1
+      fm = discord.Embed(title=f"{ctx.author}'s' Remove Log",color=0x96DDFF)
+      fm.set_thumbnail(url="https://www.jetforums.net/attachments/piperjet-aircraft-jpg.319/")
+      fm.add_field(name="Payment From", value= "{}".format(UserAt))
+      fm.add_field(name="Payment Recieved", value= "{}".format(earning))
+      fm.set_footer(text="Aeron Flight Bot v1.0")
+      ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
+      await channel.send(embed=fm)  #("{} added to {}".format(earnings, balance))
+      
     user["wallet"] = balance + earning
+    db[str(Userid)] = json.dumps(user)
     
-@remove.error
+@r.error
 async def clear_error(ctx, error,user: discord.User=None):
  if isinstance(error, commands.errors.UserNotFound):
     
@@ -260,6 +284,19 @@ async def clear_error(ctx, error,user: discord.User=None):
       ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
       await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
    
+    if earnings > 0: #PUSH TO LOG CHANNEL
+      channel = client.get_channel(880002977753071626) 
+      #This Tells it were to sent the message
+
+      earning = earnings * -1
+      fm = discord.Embed(title=f"{ctx.author}'s' Remove Log",color=0x96DDFF)
+      fm.set_thumbnail(url="https://www.jetforums.net/attachments/piperjet-aircraft-jpg.319/")
+      fm.add_field(name="Payment From", value= "{}".format(ctx.author))
+      fm.add_field(name="Payment Recieved", value= "{}".format(earning))
+      fm.set_footer(text="Aeron Flight Bot v1.0")
+      ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
+      await channel.send(embed=fm)  #("{} added to {}".format(earnings, balance))
+    
     else:
       ctx.send("!remove @Person Amount") 
    
@@ -274,7 +311,7 @@ async def open_profile(user):
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["wallet", "bank", "try", "lttv"]:
+      for field in ["wallet", "bank", "try", "lttv", "jdate"]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
@@ -283,8 +320,13 @@ async def open_profile(user):
           db[user.id] = json.dumps(js)
       return js
     else:
+       
+      ts = datetime.datetime.now() # Gets Date from right now and set it to TS
       print("Registering user {}".format(user.id))
-      js = {"Registered": True, "wallet": 0, "bank": 0, "try": 0} #added try to this and line 89/95
+      js = {"Registered": True, "wallet": 0, "bank": 0, "try": 0, "jdate":ts.strftime('%x') } #added try to this and line 89/95
+     # Sets jdate value to right nows date though ts.strtime("%x") when a new person
+     # Creates a profile and Registers
+      
       db[user.id] = json.dumps(js)
       return js
 #----------------------------------------------------------------------------
@@ -310,3 +352,4 @@ client.run(os.environ['envtoken'])
 #
 #this is fucking stupid
 #
+# TO DO: Log channel for remove command || Leaderboard || Clock in/out 
