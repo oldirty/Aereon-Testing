@@ -78,11 +78,12 @@ async def stats(ctx, user: discord.User=None):
     try:
       em = newEmbed(title=f"{userat}'s stats",
         fields={
-          "Balance Owed": "${:,}".format(user["wallet"]),
-          "Life Time Flights:": user["tft"],
-          "Lifetime Passengers": user["try"],
-          "Lifetime Ticket Value": "${:,}".format(user["bank"]),
-          "Pilot Join Date": user["jdate"],
+          "Balance Owed": "${:,}".format(user["balance_owed"]),
+          "Life Time Hours Worked": int(user["total_hours_worked"] // 3600), 
+          "Life Time Flights:": user["total_flights"],
+          "Lifetime Passengers": user["total_passengers"],
+          "Lifetime Ticket Value": "${:,}".format(user["total_money_earned"]),
+          "Pilot Join Date": user["join_date"],
           })
     except BaseException as e:
       em = discord.Embed(title=f"{userat}")
@@ -100,7 +101,7 @@ async def leaderboard(ctx, limit=10):
       u = json.loads(str(db[str(user)]))
       discord_user = await client.fetch_user(str(user))
       
-      total_amount = u["bank"] 
+      total_amount = u["total_money_earned"] 
       leader_board[total_amount] = discord_user.name
 
     keys = sorted(leader_board.keys(),reverse=True)
@@ -129,8 +130,8 @@ async def Register(ctx):
        
       ts = datetime.datetime.now() # Gets Date from right now and set it to TS
       print("Registering user {}".format(ctx.author.id))
-      js = {"Registered": True, "wallet": 0, "bank": 0, "try": 0, "jdate":ts.strftime('%x'), "cdin" : False } #added try to this and line 89/95
-     # Sets jdate value to right nows date though ts.strtime("%x") when a new person
+      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False } #added try to this and line 89/95
+     # Sets join_date value to right nows date though ts.strtime("%x") when a new person
      # Creates a profile and Registers
       await ctx.send("You Are Now Registered")
       db[ctx.author.id] = json.dumps(js)
@@ -149,7 +150,7 @@ async def jd(ctx):
       "Error": f"Unrecognized or unregistered user: {user}"
     })
     ctx.send(embed=fm)
-  user["jdate"] = "08/25/21"
+  user["join_date"] = "08/25/21"
   db[ctx.author.id] = json.dumps(user)
 
 #----------------------------------------------------------------------------
@@ -163,10 +164,10 @@ async def flight(ctx, destination=None, passengers=None):
     except:
         print("Unexpected value in #add: {}".format(db[str(ctx.author.id)]))
         
-    tlp =  user["tft"] + (int(1)) 
-    balance = user["wallet"]
-    tbal = user["bank"]
-    total_passengers = user["try"]
+    tlp =  user["total_flights"] + (int(1)) 
+    balance = user["balance_owed"]
+    tbal = user["total_money_earned"]
+    total_passengers = user["total_passengers"]
 
     destination = destination.lower()
     destinations = {
@@ -193,20 +194,21 @@ async def flight(ctx, destination=None, passengers=None):
       fields={ "Passengers": passengers, "Ticket Value": "${:,}".format (earnings)})
     await ctx.send(embed=fm)
     
-    user["tft"] = tlp
-    user["bank"] = earnings + tbal
-    user["try"] = total_passengers + int(passengers)
-    user["wallet"] = balance + earnings
+    user["total_flights"] = tlp
+    user["total_money_earned"] = earnings + tbal
+    user["total_passengers"] = total_passengers + int(passengers)
+    user["balance_owed"] = balance + earnings
     user["shift_wallet"] = user["shift_wallet"] + earnings
     user["shift_passengers"] = user["shift_passengers"] + total_passengers
     user["shift_flights"] = user["shift_flights"] + 1
     db[str(ctx.author.id)] = json.dumps(user)
 
-#======================================================================================================================================================================================================================================================================    
+#=============================================================================================================================================================================================================================================
+
+#=============================================================================================================================================================================================================================================
 @client.command(aliases=['onduty', 'offduty', 'Onduty', 'Offduty'])
 #@commands.has_role('Money Remover')
 async def clock(ctx, username: discord.User=None):
-
   if username is not None:
     uid = username
   else:
@@ -223,16 +225,17 @@ async def clock(ctx, username: discord.User=None):
   # odirzy snippy time fun for python date format garbo '%a %b %d %H:%M:%S %Y
   if user["clocked_in"] is not None and user["clocked_in"] == True:
     user["clocked_in"] = False
-    start_time = datetime.datetime.strptime(user["cistart"], '%a, %b %d, %Y\n\n%I:%M:%S %p')
+    start_time = datetime.datetime.strptime(user["clock_start"], '%a, %b %d, %Y\n\n%I:%M:%S %p')
     end_time = datetime.datetime.now()
     shift_time = (end_time - start_time)
-    print(shift_time)
-    #shift_time = datetime.timedelta(seconds=int(shift_time.total_seconds())) - somewhat working
-
+    shift_time_hrs = int(shift_time.total_seconds() // 3600)
+    shift_time_mins = int((shift_time.total_seconds() % 3600) // 60)
+    shift_time_secs = int(shift_time.total_seconds() % 60)
+    shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
    
     fm = newEmbed(title=f"{uid.name} has clocked out",
       fields={
-        "Time on shift": shift_time,
+        "Time on shift": shift_time_str,
         "Total Flights this shift": user["shift_flights"],
         "Passengers this shift": user["shift_passengers"],
         "Shift earnings": "${:,}".format(user["shift_wallet"])
@@ -240,16 +243,16 @@ async def clock(ctx, username: discord.User=None):
     await ctx.send(embed=fm)
   else: # clocked_in is false-y
     user["clocked_in"] = True
-    user["cistart"] = now
+    user["clock_start"] = now
     fm = newEmbed(title=f"{uid.name} has clocked in",
       fields={"Start time": "{}".format(now)})
     await ctx.send(embed=fm)
-    
+ 
   user["shift_flights"] = 0
   user["shift_wallet"] = 0
   user["shift_passengers"] = 0
+  user["total_hours_worked"] = user["total_hours_worked"] + shift_time.total_seconds()
   db[uid.id] = json.dumps(user)
-
 #------------------------------------------------REMOVECOMMAND--------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------
 
@@ -265,7 +268,7 @@ async def r(ctx, user: discord.User=None):
         user = json.loads(str(db[str(Userid)]))
     except:
         print("Unexpected value in #r: {}".format(db[str(Userid)]))
-    balance = user["wallet"]
+    balance = user["balance_owed"]
     earnings = int()
     arguments = ctx.message.content.split(' ')
       
@@ -283,8 +286,8 @@ async def r(ctx, user: discord.User=None):
     if earnings > 0:
       earning = earnings * -1
       fm = newEmbed(title=f"{ctx.author}'s Invoice Created",
-        fields={ "Payment Recieved": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["wallet"] + earning)})
-      ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
+        fields={ "Payment Recieved": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["balance_owed"] + earning)})
+      ##fm.add_field(name="Life Time Passangers", value= user["total_passengers"] + psngr)##
       await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
 
     if earnings > 0: #PUSH TO LOG CHANNEL
@@ -293,10 +296,10 @@ async def r(ctx, user: discord.User=None):
       earning = earnings * -1
       fm = newEmbed(title=f"{ctx.author}'s remove log",
         fields={ "Payment From": "${:,}".format(UserAt), "Payment Received": "${:,}".format (earnings)})
-      ##fm.add_field(name="Life Time Passangers", value= user["try"] + psngr)##
+      ##fm.add_field(name="Life Time Passangers", value= user["total_passengers"] + psngr)##
       await channel.send(embed=fm)  #("{} added to {}".format(earnings, balance))
       
-    user["wallet"] = balance + earning
+    user["balance_owed"] = balance + earning
     db[str(Userid)] = json.dumps(user)
     
 @r.error
@@ -307,7 +310,7 @@ async def clear_error(ctx, error,user: discord.User=None):
       user = json.loads(str(db[str(ctx.author.id)]))
     except:
         print("Unexpected value in #add: {}".format(db[str(ctx.author.id)]))
-    balance = user["wallet"]
+    balance = user["balance_owed"]
     earnings = int()
     arguments = ctx.message.content.split(' ')
 
@@ -325,7 +328,7 @@ async def clear_error(ctx, error,user: discord.User=None):
     if earnings > 0:
       earning = earnings * -1
       fm = newEmbed(title=f"{ctx.author.name}'s Invoice Created",
-        fields={"Payment Received": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["wallet"] + earning)})
+        fields={"Payment Received": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["balance_owed"] + earning)})
 
       await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
    
@@ -342,7 +345,7 @@ async def clear_error(ctx, error,user: discord.User=None):
       ctx.send("!remove @Person Amount") 
    
    
-    user["wallet"] = balance + earning
+    user["balance_owed"] = balance + earning
     db[str(ctx.author.id)] = json.dumps(user)
 #----------------------------------------------------------------------------
 #----------------------------------CREATE USER PROFLE------------------------
@@ -353,7 +356,7 @@ async def clear_error(ctx, error,user: discord.User=None):
 #    
 #    if str(user.id) in users and register == False:
 #      js = json.loads(str(db[str(user.id)]))
-#      for field in ["wallet", "bank", "try",
+#      for field in ["balanced_owed", "total_money_earned", "total_passengers",
 #       "tft", "jdate", "cistart", "cbank","cwallet",
 #       "clocked_in", "shift", "shift_wallet", "shift_flights",
 #       "shift_passengers", "totaltime"]:
@@ -390,7 +393,7 @@ async def open_profile(user):
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["wallet", "bank", "try", "tft", "jdate", "cistart", "cbank","cwallet", "cdin", "shift","totaltime"]:
+      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "cbank","cwallet", "cdin", "shift","total_hours_worked"]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
