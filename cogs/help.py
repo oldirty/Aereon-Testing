@@ -6,7 +6,7 @@ class Help(commands.Cog):
   def __init__(self, client):
     self.client = client
 
-  @commands.command()
+  @commands.command(aliases=['info', 'Info'])
   async def Help(self, ctx):
      embed = discord.Embed(title="AltF4 Airlines", url="https://google.com", description= "Commands To Use", color=0xff0000)
      embed.set_author(name=ctx.author.display_name, url="https://google.com", icon_url=ctx.author.avatar_url)

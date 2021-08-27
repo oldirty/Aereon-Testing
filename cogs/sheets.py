@@ -6,7 +6,7 @@ class Sheets(commands.Cog):
   def __init__(self, client):
     self.client = client
 
-  @commands.command()
+  @commands.command(aliases=['guides'])
   async def Sheets(self, ctx):
      embed = discord.Embed(title="AltF4 Airlines", url="https://google.com", description= "Official Guides of AltF4 Airlines", color=0xff0000)
      embed.set_thumbnail(url="https://www.jetforums.net/attachments/piperjet-aircraft-jpg.319/")
