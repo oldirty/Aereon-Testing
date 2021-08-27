@@ -232,6 +232,8 @@ async def clock(ctx, username: discord.User=None):
     shift_time_mins = int((shift_time.total_seconds() % 3600) // 60)
     shift_time_secs = int(shift_time.total_seconds() % 60)
     shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
+
+    user["total_hours_worked"] = user["total_hours_worked"] + shift_time.total_seconds()
    
     fm = newEmbed(title=f"{uid.name} has clocked out",
       fields={
@@ -248,13 +250,17 @@ async def clock(ctx, username: discord.User=None):
       fields={"Start time": "{}".format(now)})
     await ctx.send(embed=fm)
  
+  
   user["shift_flights"] = 0
   user["shift_wallet"] = 0
   user["shift_passengers"] = 0
-  user["total_hours_worked"] = user["total_hours_worked"] + shift_time.total_seconds()
   db[uid.id] = json.dumps(user)
 #------------------------------------------------REMOVECOMMAND--------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------
+
+@client.command()
+async def reallyremove(ctx):
+  del(db[str(ctx.author.id)])
 
 @client.command(aliases=['R','remove','Remove'])
 #@commands.has_role("Management")
@@ -393,7 +399,7 @@ async def open_profile(user):
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "cbank","cwallet", "cdin", "shift","total_hours_worked"]:
+      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked"]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
