@@ -100,7 +100,7 @@ async def leaderboard(ctx, limit=10):
       u = json.loads(str(db[str(user)]))
       discord_user = await client.fetch_user(str(user))
       
-      total_amount = u["bank"] + u["wallet"]
+      total_amount = u["bank"] 
       leader_board[total_amount] = discord_user.name
 
     keys = sorted(leader_board.keys(),reverse=True)
@@ -198,7 +198,7 @@ async def flight(ctx, destination=None, passengers=None):
     user["try"] = total_passengers + int(passengers)
     user["wallet"] = balance + earnings
     user["shift_wallet"] = user["shift_wallet"] + earnings
-    user["shift_passengers"] = user["shift_passengers"] + passengers
+    user["shift_passengers"] = user["shift_passengers"] + total_passengers
     user["shift_flights"] = user["shift_flights"] + 1
     db[str(ctx.author.id)] = json.dumps(user)
 
