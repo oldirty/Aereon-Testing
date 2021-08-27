@@ -50,13 +50,14 @@ async def on_member_join(member):
 async def on_member_remove(member):
     channel = client.get_channel(865731272919744535)
     await channel.send("Hah, later nerd!")
+
+#----------------------------------------------------------------------------
+#----------------------------------DB FIDDLING-------------------------------
+#----------------------------------------------------------------------------
+
 #----------------------------------------------------------------------------
 #-----------------------------------STATS COMMAND----------------------------
 #----------------------------------------------------------------------------
-
-
-
-
 @client.command(aliases=['s', 'Stats', 'STATS'])
 async def stats(ctx, user: discord.User=None):
     if not user:
@@ -100,8 +101,9 @@ async def leaderboard(ctx, limit=10):
     for user in users:
       u = json.loads(str(db[str(user)]))
       discord_user = await client.fetch_user(str(user))
-      
-      total_amount = u["total_money_earned"] 
+    
+  
+      total_amount = u["total_money_earned"]
       leader_board[total_amount] = discord_user.name
 
     keys = sorted(leader_board.keys(),reverse=True)
@@ -130,7 +132,7 @@ async def Register(ctx):
        
       ts = datetime.datetime.now() # Gets Date from right now and set it to TS
       print("Registering user {}".format(ctx.author.id))
-      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False } #added try to this and line 89/95
+      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False , "total_flights" : 0, "shift_flights" : 0,"shift_passengers" : 0,"shift_wallet":0,"total_hours_worked":0, "clock_start":0, "clocked_in"  : False } #added try to this and line 89/95
      # Sets join_date value to right nows date though ts.strtime("%x") when a new person
      # Creates a profile and Registers
       await ctx.send("You Are Now Registered")
@@ -194,6 +196,7 @@ async def flight(ctx, destination=None, passengers=None):
       fields={ "Passengers": passengers, "Ticket Value": "${:,}".format (earnings)})
     await ctx.send(embed=fm)
     
+    
     user["total_flights"] = tlp
     user["total_money_earned"] = earnings + tbal
     user["total_passengers"] = total_passengers + int(passengers)
@@ -202,7 +205,6 @@ async def flight(ctx, destination=None, passengers=None):
     user["shift_passengers"] = user["shift_passengers"] + total_passengers
     user["shift_flights"] = user["shift_flights"] + 1
     db[str(ctx.author.id)] = json.dumps(user)
-
 #=============================================================================================================================================================================================================================================
 
 #=============================================================================================================================================================================================================================================
@@ -257,7 +259,6 @@ async def clock(ctx, username: discord.User=None):
   db[uid.id] = json.dumps(user)
 #------------------------------------------------REMOVECOMMAND--------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------
-
 @client.command()
 async def reallyremove(ctx):
   del(db[str(ctx.author.id)])
