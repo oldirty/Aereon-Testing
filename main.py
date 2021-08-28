@@ -54,7 +54,7 @@ async def on_member_remove(member):
 #----------------------------------------------------------------------------
 #----------------------------------DB FIDDLING-------------------------------
 #----------------------------------------------------------------------------
-#del db["209179935074549760"]
+
 
 #----------------------------------------------------------------------------
 #-----------------------------------STATS COMMAND----------------------------
@@ -115,13 +115,40 @@ async def leaderboard(ctx, limit=10):
   
       total_amount = u["total_money_earned"]
       leader_board[total_amount] = discord_user.name
-
+    
     keys = sorted(leader_board.keys(),reverse=True)
 
     em = discord.Embed(title = f"Top {limit} Earners!" , description = "This is decided on the basis of Total Lifetime Ticket Value",color = discord.Color(0xfa43ee))
     keys = keys[:limit]
     for index, amt in enumerate(keys):
         em.add_field(name = f"{index + 1}. {leader_board[amt]}" , value = f"${amt:,}",  inline = False)
+
+    await ctx.send(embed = em)
+################################################################################################################################################################################
+@client.command(aliases=['wh','WH'])
+async def weeklyhours(ctx, limit=100):
+    users = await get_profile_data()
+    weekly_hours = {}
+    for user in users:
+      u = json.loads(str(db[str(user)]))
+      discord_user = await client.fetch_user(str(user))
+      
+
+    shift_time = u["total_hours_worked"]
+    shift_time_hrs = int(shift_time // 3600)
+    shift_time_mins = int((shift_time % 3600) // 60)
+    shift_time_secs = int(shift_time % 60)
+    shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
+  
+    total_amount = shift_time_str
+    weekly_hours[total_amount] = discord_user.name
+    
+    keys = sorted(weekly_hours.keys(),reverse=True)
+
+    em = discord.Embed(title = f"Weekly hours for employees!" , description = "Make sure to log these in excel before purging!!!",color = discord.Color(0xfa43ee))
+    keys = keys[:limit]
+    for index, amt in enumerate(keys):
+        em.add_field(name = f"{index + 1}. {weekly_hours[amt]}" , value = f"{amt:}",  inline = False)
 
     await ctx.send(embed = em)
 #---------------------------------------------------------------------------------------
@@ -142,7 +169,7 @@ async def Register(ctx):
        
       ts = datetime.datetime.now() # Gets Date from right now and set it to TS
       print("Registering user {}".format(ctx.author.id))
-      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False , "total_flights" : 0, "shift_flights" : 0,"shift_passengers" : 0,"shift_wallet":0,"total_hours_worked":0, "clock_start":0, "clocked_in"  : False } #added try to this and line 89/95
+      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False , "total_flights" : 0, "shift_flights" : 0,"shift_passengers" : 0,"shift_wallet":0,"total_hours_worked":0, "clock_start":0, "clocked_in"  : False,"weekly_hours_worked": 0 } #added try to this and line 89/95
      # Sets join_date value to right nows date though ts.strtime("%x") when a new person
      # Creates a profile and Registers
       await ctx.send("You Are Now Registered")
@@ -218,7 +245,7 @@ async def flight(ctx, destination=None, passengers=None):
 #=============================================================================================================================================================================================================================================
 
 #=============================================================================================================================================================================================================================================
-@client.command(aliases=['onduty', 'offduty', 'Onduty', 'Offduty'])
+@client.command(aliases=['onduty', 'offduty', 'Onduty', 'Offduty', 'ofd', 'od'])
 #@commands.has_role('Money Remover')
 async def clock(ctx, username: discord.User=None):
   if username is not None:
@@ -246,7 +273,7 @@ async def clock(ctx, username: discord.User=None):
     shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
 
     user["total_hours_worked"] = user["total_hours_worked"] + shift_time.total_seconds()
-   
+    user["weekly_hours_worked"] = user["weekly_hours_worked"] + shift_time.total_seconds()
     fm = newEmbed(title=f"{uid.name} has clocked out",
       fields={
         "Time on shift": shift_time_str,
@@ -410,7 +437,7 @@ async def open_profile(user):
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights" ]:
+      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights","weekly_hours_worked" ]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
