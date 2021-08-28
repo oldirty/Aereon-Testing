@@ -200,51 +200,58 @@ async def jd(ctx):
 #----------------------------------------------------------------------------
 @client.command(aliases=['Flight','FLIGHT','fl', 'f'])
 async def flight(ctx, destination=None, passengers=None):
+
+  
     await open_profile(ctx.author) 
     try:
         user = json.loads(str(db[str(ctx.author.id)]))
     except:
         print("Unexpected value in #add: {}".format(db[str(ctx.author.id)]))
         
-    tlp =  user["total_flights"] + (int(1)) 
-    balance = user["balance_owed"]
-    tbal = user["total_money_earned"]
-    total_passengers = user["total_passengers"]
-
-    destination = destination.lower()
-    destinations = {
-      "bloon": 2500,
-      "sky": 2500,
-      "scuba": 3500,
-      "pudo": 2500,
-      "sked": 1500,
-      "vip": 4000,
-    } 
+    if user["clocked_in"] == False: 
+      await ctx.send ("You are not clocked in")
     
-    if destination is not None and passengers is not None:
-      if destination in destinations.keys():
-        try:
-          earnings = int(passengers) * destinations[destination]
-        except:
-          await ctx.send(f"Invalid `passengers` value: {passengers}")
-      else:
-        await ctx.send(f"Invalid destination: {destination}")
     else:
-      await ctx.send(f"Usage: `!flight <destination> <passengers>`")
 
-    fm = newEmbed(title=f"Ticket Collected {ctx.author.name}",
-      fields={ "Passengers": passengers, "Ticket Value": "${:,}".format (earnings)})
-    await ctx.send(embed=fm)
-    
-    
-    user["total_flights"] = tlp
-    user["total_money_earned"] = earnings + tbal
-    user["total_passengers"] = total_passengers + int(passengers)
-    user["balance_owed"] = balance + earnings
-    user["shift_wallet"] = user["shift_wallet"] + earnings
-    user["shift_passengers"] = user["shift_passengers"] + int(passengers)
-    user["shift_flights"] = user["shift_flights"] + 1
-    db[str(ctx.author.id)] = json.dumps(user)
+      tlp =  user["total_flights"] + (int(1))
+      balance = user["balance_owed"]
+      tbal = user["total_money_earned"]
+      total_passengers = user["total_passengers"]
+
+      destination = destination.lower()
+      destinations = {
+        "bloon": 2500,
+        "sky": 2500,
+        "scuba": 3500,
+        "pudo": 2500,
+        "sked": 1500,
+        "vip": 4000,
+      } 
+      
+      if destination is not None and passengers is not None:
+        if destination in destinations.keys():
+          try:
+            earnings = int(passengers) * destinations[destination]
+          except:
+            await ctx.send(f"Invalid `passengers` value: {passengers}")
+        else:
+          await ctx.send(f"Invalid destination: {destination}")
+      else:
+        await ctx.send(f"Usage: `!flight <destination> <passengers>`")
+
+      fm = newEmbed(title=f"Ticket Collected {ctx.author.name}",
+        fields={ "Passengers": passengers, "Ticket Value": "${:,}".format (earnings)})
+      await ctx.send(embed=fm)
+      
+      
+      user["total_flights"] = tlp
+      user["total_money_earned"] = earnings + tbal
+      user["total_passengers"] = total_passengers + int(passengers)
+      user["balance_owed"] = balance + earnings
+      user["shift_wallet"] = user["shift_wallet"] + earnings
+      user["shift_passengers"] = user["shift_passengers"] + int(passengers)
+      user["shift_flights"] = user["shift_flights"] + 1
+      db[str(ctx.author.id)] = json.dumps(user)
 #=============================================================================================================================================================================================================================================
 #@client.command()
 #async def shstats (ctx, username: discord.User=None):
