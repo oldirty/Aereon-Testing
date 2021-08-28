@@ -54,12 +54,14 @@ async def on_member_remove(member):
 #----------------------------------------------------------------------------
 #----------------------------------DB FIDDLING-------------------------------
 #----------------------------------------------------------------------------
+#del db["209179935074549760"]
 
 #----------------------------------------------------------------------------
 #-----------------------------------STATS COMMAND----------------------------
 #----------------------------------------------------------------------------
 @client.command(aliases=['s', 'Stats', 'STATS'])
 async def stats(ctx, user: discord.User=None):
+    
     if not user:
       userid = ctx.author.id
       userat = ctx.author
@@ -75,17 +77,25 @@ async def stats(ctx, user: discord.User=None):
         "Error": f"Unrecognized or unregistered user: {user}"
       })
       ctx.send(embed=fm)
+      
+    shift_time = user["total_hours_worked"]
+    shift_time_hrs = int(shift_time // 3600)
+    shift_time_mins = int((shift_time % 3600) // 60)
+    shift_time_secs = int(shift_time % 60)
+    shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
 
+      
     try:
       em = newEmbed(title=f"{userat}'s stats",
         fields={
           "Balance Owed": "${:,}".format(user["balance_owed"]),
-          "Life Time Hours Worked": int(user["total_hours_worked"] // 3600), 
+          "Life Time Hours Worked": shift_time_str,
           "Life Time Flights:": user["total_flights"],
           "Lifetime Passengers": user["total_passengers"],
           "Lifetime Ticket Value": "${:,}".format(user["total_money_earned"]),
           "Pilot Join Date": user["join_date"],
           })
+    
     except BaseException as e:
       em = discord.Embed(title=f"{userat}")
       em.add_field(name="debug", value=user)
@@ -202,7 +212,7 @@ async def flight(ctx, destination=None, passengers=None):
     user["total_passengers"] = total_passengers + int(passengers)
     user["balance_owed"] = balance + earnings
     user["shift_wallet"] = user["shift_wallet"] + earnings
-    user["shift_passengers"] = user["shift_passengers"] + total_passengers
+    user["shift_passengers"] = user["shift_passengers"] + int(passengers)
     user["shift_flights"] = user["shift_flights"] + 1
     db[str(ctx.author.id)] = json.dumps(user)
 #=============================================================================================================================================================================================================================================
