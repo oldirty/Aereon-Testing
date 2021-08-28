@@ -175,7 +175,7 @@ async def Register(ctx):
        
       ts = datetime.datetime.now() # Gets Date from right now and set it to TS
       print("Registering user {}".format(ctx.author.id))
-      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False , "total_flights" : 0, "shift_flights" : 0,"shift_passengers" : 0,"shift_wallet":0,"total_hours_worked":0, "clock_start":0, "clocked_in"  : False,"weekly_hours_worked": 0 } #added try to this and line 89/95
+      js = {"Registered": True, "balance_owed": 0, "total_money_earned": 0, "total_passengers": 0, "join_date":ts.strftime('%x'), "cdin" : False , "total_flights" : 0, "shift_flights" : 0,"shift_passengers" : 0,"shift_wallet":0,"total_hours_worked":0, "clock_start":0, "clocked_in"  : False,"weekly_hours_worked": 0,"shift_time":0 } #added try to this and line 89/95
      # Sets join_date value to right nows date though ts.strtime("%x") when a new person
      # Creates a profile and Registers
       await ctx.send("You Are Now Registered")
@@ -253,13 +253,44 @@ async def flight(ctx, destination=None, passengers=None):
       user["shift_flights"] = user["shift_flights"] + 1
       db[str(ctx.author.id)] = json.dumps(user)
 #=============================================================================================================================================================================================================================================
-#@client.command()
-#async def shstats (ctx, username: discord.User=None):
-# print("Hello")
-
-  
-
-
+@client.command(aliases=['ss','sstats',"shsta"])
+async def shstats (ctx, user: discord.User=None):
+  if not user:
+    userid = ctx.author.id
+    userat = ctx.author
+  else:
+    userid = user.id
+    userat = user.name
+    
+  await open_profile(userat)
+  try:
+    user = json.loads(str(db[str(userid)]))
+  except KeyError as e:
+      fm = newEmbed(title=f"{user} is not registered!", fields={
+        "Error": f"Unrecognized or unregistered user: {user}"
+      })
+      ctx.send(embed=fm)
+      
+  if user["clocked_in"] == False:
+    await ctx.send("You must be Clocked in")   
+  else:  
+    start_time = datetime.datetime.strptime(user["clock_start"], '%a, %b %d, %Y\n\n%I:%M:%S %p')
+    shift_time_str = calculate_shift_time(start_time)
+    
+    try:
+      em = newEmbed(title=f"{userat}'s Shift Stats",
+        fields={
+          "Total Balance Owed": "${:,}".format(user["balance_owed"]),
+          "Ticket Value This Shift": "${:,}".format(user["shift_wallet"]),
+          "Flights during Shift": user["shift_flights"],
+          "Passenger's during shift": user["shift_passengers"],
+          "Hours worked this shift": shift_time_str,
+        })
+    except BaseException as e:
+        em = discord.Embed(title=f"{userat}")
+        em.add_field(name="debug", value=user)
+        em.add_field(name="error", value=str(e))
+    await ctx.send(embed=em)
 #===================================================================================================================================================================================================================
 @client.command(aliases=['onduty', 'offduty', 'Onduty', 'Offduty', 'ofd', 'od'])
 #@commands.has_role('Money Remover')
@@ -281,18 +312,15 @@ async def clock(ctx, username: discord.User=None):
   if user["clocked_in"] is not None and user["clocked_in"] == True:
     user["clocked_in"] = False
     start_time = datetime.datetime.strptime(user["clock_start"], '%a, %b %d, %Y\n\n%I:%M:%S %p')
-    end_time = datetime.datetime.now()
-    shift_time = (end_time - start_time)
-    shift_time_hrs = int(shift_time.total_seconds() // 3600)
-    shift_time_mins = int((shift_time.total_seconds() % 3600) // 60)
-    shift_time_secs = int(shift_time.total_seconds() % 60)
-    shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
+    now = datetime.datetime.now()
+    shift_time = (now - start_time)
+    user["shift_time"] = calculate_shift_time(start_time)
 
     user["total_hours_worked"] = user["total_hours_worked"] + shift_time.total_seconds()
     user["weekly_hours_worked"] = user["weekly_hours_worked"] + shift_time.total_seconds()
     fm = newEmbed(title=f"{uid.name} has clocked out",
       fields={
-        "Time on shift": shift_time_str,
+        "Time on shift": user["shift_time"],
         "Total Flights this shift": user["shift_flights"],
         "Passengers this shift": user["shift_passengers"],
         "Shift earnings": "${:,}".format(user["shift_wallet"])
@@ -304,12 +332,21 @@ async def clock(ctx, username: discord.User=None):
     fm = newEmbed(title=f"{uid.name} has clocked in",
       fields={"Start time": "{}".format(now)})
     await ctx.send(embed=fm)
+    user["shift_flights"] = 0
+    user["shift_wallet"] = 0
+    user["shift_passengers"] = 0
  
-  
-  user["shift_flights"] = 0
-  user["shift_wallet"] = 0
-  user["shift_passengers"] = 0
   db[uid.id] = json.dumps(user)
+
+def calculate_shift_time(shift_start=None):
+  now = datetime.datetime.now()
+  shift_time = (now - shift_start)
+  shift_time_hrs = int(shift_time.total_seconds() // 3600)
+  shift_time_mins = int((shift_time.total_seconds() % 3600) // 60)
+  shift_time_secs = int(shift_time.total_seconds() % 60)
+  shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
+  return shift_time_str
+
 #------------------------------------------------REMOVECOMMAND------------------------------
 #-------------------------------------------------------------------------------------------
 @client.command(aliases=['R','remove','Remove'])
@@ -369,7 +406,7 @@ async def open_profile(user):
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights", "weekly_hours_worked"]:
+      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights", "weekly_hours_worked","shift_time"]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
