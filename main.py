@@ -56,6 +56,7 @@ async def on_member_remove(member):
 #----------------------------------------------------------------------------
 
 
+
 #----------------------------------------------------------------------------
 #-----------------------------------STATS COMMAND----------------------------
 #----------------------------------------------------------------------------
@@ -132,30 +133,35 @@ async def weeklyhours(ctx, limit=100):
     for user in users:
       u = json.loads(str(db[str(user)]))
       discord_user = await client.fetch_user(str(user))
-      
-
-    shift_time = u["total_hours_worked"]
-    shift_time_hrs = int(shift_time // 3600)
-    shift_time_mins = int((shift_time % 3600) // 60)
-    shift_time_secs = int(shift_time % 60)
-    shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
+      shift_time = u["weekly_hours_worked"]
+      shift_time_hrs = int(shift_time // 3600)
+      shift_time_mins = int((shift_time % 3600) // 60)
+      shift_time_secs = int(shift_time % 60)
+      shift_time_str = "{} Hours, {} Minutes, {} Seconds".format(shift_time_hrs, shift_time_mins, shift_time_secs)
   
-    total_amount = shift_time_str
-    weekly_hours[total_amount] = discord_user.name
+      total_amount = shift_time_str
+      weekly_hours[total_amount] = discord_user.name
     
     keys = sorted(weekly_hours.keys(),reverse=True)
 
     em = discord.Embed(title = f"Weekly hours for employees!" , description = "Make sure to log these in excel before purging!!!",color = discord.Color(0xfa43ee))
     keys = keys[:limit]
     for index, amt in enumerate(keys):
-        em.add_field(name = f"{index + 1}. {weekly_hours[amt]}" , value = f"{amt:}",  inline = False)
+        em.add_field(name = f"{index + 1}. {weekly_hours[amt]}", value = f"{amt}",  inline = False)
 
-    await ctx.send(embed = em)
-#---------------------------------------------------------------------------------------
-#---------------------------Dirty-Register--------------------------------------------------------------------------------------------------------------------------------------
-#@client.command(aliases=['Reg','register'])
-#async def Register(ctx):
- # await open_profile(ctx.author, register=True)
+    await ctx.send(embed = em)  
+
+@client.command()
+#@commands.has_role("Management")
+async def purge(ctx): 
+  weeklyhours(ctx, limit=1000)
+  users = await get_profile_data()
+
+  for uid in users:
+    user = json.loads(str(db[str(uid)]))
+    user["weekly_hours_worked"] = 0
+    db[uid] = json.dumps(user)
+  await ctx.send("Weekly hours have been purged")
 #=======================================================================================
 #------------------------------Infintitys-register--------------------------------------
 #=======================================================================================
@@ -177,8 +183,6 @@ async def Register(ctx):
       return js
 #=======================================================================================
 #=======================================================================================
-
-  
 @client.command()
 async def jd(ctx):
   await open_profile(ctx.author)
@@ -191,7 +195,6 @@ async def jd(ctx):
     ctx.send(embed=fm)
   user["join_date"] = "08/25/21"
   db[ctx.author.id] = json.dumps(user)
-
 #----------------------------------------------------------------------------
 #----------------------------------FLIGHT COMMAND----------------------------
 #----------------------------------------------------------------------------
@@ -243,8 +246,14 @@ async def flight(ctx, destination=None, passengers=None):
     user["shift_flights"] = user["shift_flights"] + 1
     db[str(ctx.author.id)] = json.dumps(user)
 #=============================================================================================================================================================================================================================================
+#@client.command()
+#async def shstats (ctx, username: discord.User=None):
+# print("Hello")
 
-#=============================================================================================================================================================================================================================================
+  
+
+
+#===================================================================================================================================================================================================================
 @client.command(aliases=['onduty', 'offduty', 'Onduty', 'Offduty', 'ofd', 'od'])
 #@commands.has_role('Money Remover')
 async def clock(ctx, username: discord.User=None):
@@ -294,12 +303,8 @@ async def clock(ctx, username: discord.User=None):
   user["shift_wallet"] = 0
   user["shift_passengers"] = 0
   db[uid.id] = json.dumps(user)
-#------------------------------------------------REMOVECOMMAND--------------------------------------------------------
-#----------------------------------------------------------------------------------------------------------------------
-@client.command()
-async def reallyremove(ctx):
-  del(db[str(ctx.author.id)])
-
+#------------------------------------------------REMOVECOMMAND------------------------------
+#-------------------------------------------------------------------------------------------
 @client.command(aliases=['R','remove','Remove'])
 #@commands.has_role("Management")
 async def r(ctx, user: discord.User=None):   
@@ -329,60 +334,18 @@ async def r(ctx, user: discord.User=None):
        
     if earnings > 0:
       earning = earnings * -1
-      fm = newEmbed(title=f"{ctx.author}'s Invoice Created",
+      fm = newEmbed(title=f"{UserAt}'s Invoice Created",
         fields={ "Payment Recieved": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["balance_owed"] + earning)})
       ##fm.add_field(name="Life Time Passangers", value= user["total_passengers"] + psngr)##
       await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
 
     if earnings > 0: #PUSH TO LOG CHANNEL
-      channel = client.get_channel(880002977753071626)
-
-      earning = earnings * -1
-      fm = newEmbed(title=f"{ctx.author}'s remove log",
-        fields={ "Payment From": "${:,}".format(UserAt), "Payment Received": "${:,}".format (earnings)})
-      ##fm.add_field(name="Life Time Passangers", value= user["total_passengers"] + psngr)##
-      await channel.send(embed=fm)  #("{} added to {}".format(earnings, balance))
-      
-    user["balance_owed"] = balance + earning
-    db[str(Userid)] = json.dumps(user)
-    
-@r.error
-async def clear_error(ctx, error,user: discord.User=None):
- if isinstance(error, commands.errors.UserNotFound):
-    await open_profile(ctx.author)
-    try:
-      user = json.loads(str(db[str(ctx.author.id)]))
-    except:
-        print("Unexpected value in #add: {}".format(db[str(ctx.author.id)]))
-    balance = user["balance_owed"]
-    earnings = int()
-    arguments = ctx.message.content.split(' ')
-
-    for arg in arguments:
-        try:
-            int(arg)
-            earnings = int(arg)
-        except:
-            pass
-
-    if earnings < 0:
-      await ctx.send('Please Use a Positive Number.')
-      return
-
-    if earnings > 0:
-      earning = earnings * -1
-      fm = newEmbed(title=f"{ctx.author.name}'s Invoice Created",
-        fields={"Payment Received": "${:,}".format (earnings), "Remaining Balance": "${:,}".format (user["balance_owed"] + earning)})
-
-      await ctx.send(embed=fm)  #("{} added to {}".format(earnings, balance))
-   
-    if earnings > 0: #PUSH TO LOG CHANNEL
       channel = client.get_channel(880002977753071626) 
       #This Tells it were to sent the message
 
       earning = earnings * -1
-      fm = newEmbed(title=f"{ctx.author}'s remove log",
-        fields={ "Payment From": ctx.author, "Payment Received": earning })
+      fm = newEmbed(title=f"{UserAt}'s remove log",
+        fields={ "Payment From": UserAt, "Payment Received": earning })
       await channel.send(embed=fm)  #("{} added to {}".format(earnings, balance))
     
     else:
@@ -390,54 +353,16 @@ async def clear_error(ctx, error,user: discord.User=None):
    
    
     user["balance_owed"] = balance + earning
-    db[str(ctx.author.id)] = json.dumps(user)
+    db[str(Userid)] = json.dumps(user)
 #----------------------------------------------------------------------------
 #----------------------------------CREATE USER PROFLE------------------------
 #----------------------------------------------------------------------------
-#================================ Dirtys =======================================
-#async def open_profile(user, register=False):
-#    users = await get_profile_data()
-#    
-#    if str(user.id) in users and register == False:
-#      js = json.loads(str(db[str(user.id)]))
-#      for field in ["balanced_owed", "total_money_earned", "total_passengers",
-#       "tft", "jdate", "cistart", "cbank","cwallet",
-#       "clocked_in", "shift", "shift_wallet", "shift_flights",
-#       "shift_passengers", "totaltime"]:
-#        try:
-#          tmp = js[field]
-#          db[user.id] = json.dumps(js)
-#        except:
-#          js[field] = 0
-#          db[user.id] = json.dumps(js)
-#      return js
-#    else:
-#      fm = newEmbed(title=f"{user} is not registered!", fields={
-#        "Error": f"Unrecognized or unregistered user: {user}"
-#      })
-    
-    
-#    if register == True:
-#      ts = datetime.datetime.now() # Gets Date from right now and set it to TS
-#      print("Registering user {}".format(user.id))
-#      js = {"Registered": True, "wallet": 0, "bank": 0, "try": 0, "jdate":ts.strftime('%x'), "clocked_in" : False } #added try to this and line 89/95
-     # Sets jdate value to right nows date though ts.strtime("%x") when a new person
-     # Creates a profile and Registers
-      
-#      db[user.id] = json.dumps(js)
-#      return js
-#    else:
-#      fm = newEmbed(title=f"{user} is not registered!", fields={
-#        "Error": f"Unrecognized or unregistered user: {user}"
-#      })
-#======================================================================================
-#=============================== Infintiys============================================
 async def open_profile(user):
     users = await get_profile_data()
     
     if str(user.id) in users:
       js = json.loads(str(db[str(user.id)]))
-      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights","weekly_hours_worked" ]:
+      for field in ["balance_owed", "total_money_earned", "total_passengers", "total_flights", "join_date", "clock_start", "clocked_in", "total_hours_worked", "shift_wallet", "shift_passengers", "shift_flights", "weekly_hours_worked"]:
         try:
           tmp = js[field]
           db[user.id] = json.dumps(js)
